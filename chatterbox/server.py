@@ -117,7 +117,7 @@ def generate_speech():
                 
                 # Convert to MP3 using ffmpeg
                 mp3_path = tmp_wav.name.replace('.wav', '.mp3')
-                os.system(f"ffmpeg -i {tmp_wav.name} -acodec libmp3lame -b:a 192k {mp3_path} -y -loglevel error")
+                os.system(f"ffmpeg -i {tmp_wav.name} -acodec libmp3lame -b:a 128k {mp3_path} -y -loglevel error")
                 
                 # Read MP3 data
                 with open(mp3_path, 'rb') as f:

@@ -1,11 +1,20 @@
 # Kokoro & Chatterbox TTS Project Memory
 
+## Last Updated: 2025-07-12
+
 ## Overview
 This directory contains a complete TTS (Text-to-Speech) API system with dual TTS engine support:
 1. **Kokoro TTS** - Primary TTS engine with 82M parameters and 50+ voices
-2. **Chatterbox TTS** - Voice cloning TTS engine from ResembleAI
+2. **Chatterbox TTS** - Voice cloning TTS engine from ResembleAI with emotion control
 
 Both systems are integrated with Guardian Angel for unified voice output and media control.
+
+### Recent Updates (2025-07-12)
+- Modified Chatterbox `max_new_tokens` from 1000 to 10000 for longer audio generation
+- Optimized emotion settings: speak-heart (0.8 exaggeration, 0.8 cfg), speak-sky (0.9/0.8)
+- Changed MP3 bitrate from 192k to 128k to match Kokoro for Windows compatibility
+- Discovered practical limit of ~40-50 seconds even with increased tokens
+- Created faster voice reference samples (1.2x, 1.5x) for natural speed variation
 
 ## System Architecture
 
