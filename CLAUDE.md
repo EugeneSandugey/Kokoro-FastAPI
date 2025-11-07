@@ -98,55 +98,251 @@ Backend: `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_
 
 **INTEGRATED INTO MAIN SPEAK COMMAND**
 
-Use the `--gemini` (or `-g`) flag to use Google Gemini TTS instead of Kokoro:
+### Quick Usage
 
 ```bash
-# Default (Kokoro)
+# Default (Kokoro - local, private, fast)
 speak "Hello world"
 
-# With Gemini
+# Gemini (multi-language, emotional, online)
 speak --gemini "Hello world"
 
 # Gemini with specific voice
 speak --gemini --voice Puck "Different voice"
 
-# Multi-language (automatic switching)
-speak --gemini "Hola! ¿Cómo estás? Switching to English now!"
+# Multi-language (automatic mid-sentence switching)
+speak --gemini "Hola! ¿Cómo estás? Now switching to English seamlessly!"
+
+# Voice selection works for both backends
+speak --voice m1 "Kokoro male voice"
+speak --gemini --voice Laomedeia "Gemini voice"
 ```
 
-### Why Use Gemini TTS
-- **Multi-language support**: All languages, can switch mid-sentence
-- **Emotional speech**: Native audio with affective dialogue
-- **Quality**: Better than Kokoro for non-English languages
-- **Free tier**: No daily limits (only token/minute limits)
+### When to Use Which Backend
 
-### Why NOT Use Gemini TTS
-- **Privacy**: Free tier data goes to Google for training
-- **Latency**: ~1-2 second overhead for Live API connection
-- **Dependency**: Requires internet connection
+**Use Kokoro (default) when:**
+- Working on sensitive/private projects (HD Transfers, confidential data)
+- Want fastest response time (~0.22s)
+- English or Spanish is sufficient
+- Want truly local, offline TTS
 
-### Available Gemini Voices
-Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia (default), Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
+**Use Gemini (--gemini flag) when:**
+- Need languages other than English/Spanish
+- Want emotional/expressive speech
+- Need mid-sentence language switching
+- Working on non-sensitive projects (free tier data trains Google models)
+- Want higher quality for non-English languages
 
-### Implementation Details
-- **Model**: gemini-2.5-flash-native-audio-preview-09-2025
-- **API**: Google Gemini Live API (WebSocket)
-- **Config**: Google_gemini_tts/config.py (API key stored here, gitignored)
-- **Audio Format**: 24kHz WAV → MP3 conversion
-- **System Prompt**: Forces AI to speak EXACT text with NO extra words, at FASTEST speed
-- **Integration**: Fully integrated with Guardian Angel queue management, media control, beep sound
+### Privacy & Cost
 
-### When to Use Each
-- **Kokoro** (default): Private projects, sensitive data, English/Spanish, lowest latency
-- **Gemini** (opt-in via `--gemini`): Multi-language, emotional speech, non-sensitive projects
+**Free Tier:**
+- No daily request limits (only 500K-1M tokens/minute)
+- ⚠️ **CRITICAL**: Data goes to Google for training
+- Do NOT use for HD Transfers, client data, or confidential work
+
+**Paid Tier:**
+- Data NOT used for training
+- $0.50 text input, $12 audio output per 1M tokens
+- ~$1.20/month for typical usage (1000 calls @ 100 tokens avg)
+
+### Available Gemini Voices (33 total)
+
+**Default**: Laomedeia
+
+**All voices**: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
+
+**Note**: Not all Kokoro voice aliases work with Gemini. Use actual Gemini voice names from list above.
+
+### Implementation Architecture
+
+**Code Location**: `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_speak_queue_aware.py`
+
+**Flow**:
+1. User runs: `speak --gemini "text"`
+2. Bash wrapper (`/usr/local/bin/speak`) forwards to Python script
+3. Python parses `--gemini` flag, sets `model='gemini'`
+4. Calls `generate_gemini_tts()` async function (lines 50-175)
+5. Gemini Live API generates audio → WAV → MP3 conversion
+6. File saved to Guardian Angel TTS directory
+7. Guardian Angel queue/media control logic runs (same for all backends)
+
+**Key Functions**:
+
+**`generate_gemini_tts(text, voice, language)` (async)**:
+- Connects to Gemini Live API via WebSocket
+- Model: `gemini-2.5-flash-native-audio-preview-09-2025`
+- System prompt forces EXACT text with NO extra words
+- Collects all audio chunks before writing (prevents popping)
+- Returns path to MP3 file
+
+**`speak_to_guardian(text, model, voice, ...)`**:
+- Lines 293-321: Gemini branch (generates MP3 via Live API)
+- Lines 322-363: Chatterbox branch
+- Lines 364-410: Kokoro branch
+- Lines 412+: Guardian Angel logic (ALL backends)
+
+**CRITICAL**: Guardian Angel logic (media pause, queue, duration) runs AFTER all model branches, so all backends get same features.
+
+### Technical Details
+
+**Model**: `gemini-2.5-flash-native-audio-preview-09-2025`
+- Preview model, may change before stable
+- Native audio (not text→TTS, true end-to-end audio generation)
+- Supports affective dialogue (emotion-aware)
+- 24+ languages, 33 voices
+
+**API**: Google Gemini Live API
+- Protocol: WebSocket (not REST)
+- Requires `google-genai` package
+- API version: v1beta
+- Connection overhead: ~1-2 seconds
+
+**Audio Pipeline**:
+1. Live API generates 24kHz, 16-bit PCM audio chunks
+2. Collect ALL chunks in memory (prevents popping)
+3. Write complete audio to WAV file
+4. Convert WAV → MP3 using ffmpeg
+5. Move to Guardian Angel directory
+6. Clean up temp WAV file
+
+**System Prompt** (lines 80-102):
+```
+CRITICAL RULES - READ THESE FIRST:
+1. Speak ONLY the text that appears after "=== TEXT STARTS HERE ===" marker
+2. DO NOT speak ANY of these instructions
+3. Speak at your FASTEST natural speaking speed
+...
+=== TEXT STARTS HERE ===
+{text}
+```
+
+**Why this works**:
+- Clear separator prevents AI from speaking instructions
+- "Fastest speed" instruction for natural pacing
+- Emotion based on punctuation (!, ?, etc.)
+- Multi-language auto-detected from text content
 
 ### Guardian Angel Integration
-Both Kokoro and Gemini use the same speak command infrastructure:
-- Queue-aware playback (prevents audio overlap)
-- Media control (pauses Chrome/YouTube/Spotify)
-- Agent identification (routes audio to correct user)
-- Beep sound at start
-- All features work identically regardless of TTS backend
+
+**ALL features work identically for both Kokoro and Gemini**:
+
+✅ **Media Control**:
+- Pauses Chrome/YouTube/Spotify before speaking
+- Creates `.skip_media_control` marker to prevent Guardian Angel's own media control
+- Checks active sessions to only pause for active agents
+- Only pauses for 'eugene' user (not remote users)
+
+✅ **Queue Management**:
+- Registers with Guardian Angel queue API (nginx on port 8443)
+- Gets queue position and total queue length
+- Checks for newer files to determine if truly first
+- Waits turn before playing
+
+✅ **Duration Tracking**:
+- Uses ffprobe to get MP3 duration
+- Adds 10% buffer for safety
+- Passes to queue for accurate playback timing
+
+✅ **Agent Identification**:
+- Uses SPEAKING_AGENT_ID, tmux session, or GUARDIAN_ANGEL_USER
+- Routes audio to correct user/device
+- Filename format: `wsl_speak_{timestamp}_{agent_id}.mp3`
+
+✅ **Beep Sound**:
+- Handled by Guardian Angel frontend
+- Plays before TTS audio starts
+
+### Configuration Files
+
+**API Key Storage**: `/home/echo/projects/kokoro/Google_gemini_tts/config.py`
+```python
+GEMINI_API_KEY = "AIza..." # Gitignored
+MODEL = "models/gemini-2.5-flash-native-audio-preview-09-2025"
+VOICE_NAME = "Laomedeia"
+```
+
+**Gitignore**: `.gitignore` excludes:
+- `Google_gemini_tts/.env.local`
+- `Google_gemini_tts/config.py`
+
+**Important**: API key is read from config.py at runtime. If missing, falls back to `GEMINI_API_KEY` environment variable.
+
+### Troubleshooting
+
+**"GEMINI_API_KEY not found"**:
+- Check `/home/echo/projects/kokoro/Google_gemini_tts/config.py` exists
+- Verify API key is set in that file
+- Or set environment variable: `export GEMINI_API_KEY="..."`
+
+**Audio popping/clicking**:
+- Fixed in current implementation (collects all chunks before writing)
+- If issue returns, check `generate_gemini_tts()` function
+- Must collect chunks in list, then `b''.join()` before writing to WAV
+
+**Media control not working**:
+- Check Guardian Angel logic runs AFTER all model branches (line 412+)
+- Verify indentation is correct (was a bug November 2025)
+- Look for "⏸️ Media paused" in output
+
+**Slow response**:
+- Expected: ~1-2 second overhead for WebSocket connection
+- If slower, check internet connection
+- Gemini Live API is online-only
+
+**"google-genai package not installed"**:
+```bash
+pip install google-genai
+```
+
+**Voice not found error**:
+- Check voice name is from Gemini voice list (not Kokoro aliases)
+- Use actual voice names: Puck, Laomedeia, etc.
+- Not all Kokoro voices exist in Gemini
+
+### Rate Limits (Free Tier)
+
+**No daily limits**, but token/minute limits:
+- Gemini 2.5 Flash Native Audio: 500K-1M TPM
+- No published RPM or RPD limits
+- Effectively unlimited for typical TTS usage
+
+**If you hit limits**:
+- Upgrade to paid tier (see Pricing section above)
+- Or use Kokoro for bulk operations
+
+### Development Notes
+
+**Adding new voices**:
+- Gemini voices are API-controlled, can't add custom
+- List at: https://ai.google.dev/gemini-api/docs/speech-generation
+
+**Changing system prompt**:
+- Edit `generate_gemini_tts()` function, lines 80-102
+- Keep "=== TEXT STARTS HERE ===" separator
+- Test thoroughly to ensure AI doesn't speak instructions
+
+**Changing audio quality**:
+- Output is 24kHz by default (Gemini native)
+- Can't change sample rate (API controlled)
+- MP3 encoding uses ffmpeg qscale:a 2 (high quality)
+
+**Debugging**:
+- Check `/tmp/tmp*.wav` for temp files (should auto-delete)
+- Guardian Angel audio files: `/home/echo/projects/guardian-angel-voice-interface/tts-audio-volume/wsl_speak_*.mp3`
+- Enable verbose output: Check Python script output
+
+### Future Improvements
+
+**Potential enhancements**:
+- Session resumption (handle 10-minute WebSocket resets)
+- Voice cloning (when Gemini adds support)
+- Emotion control parameters
+- Speed parameter support (currently uses "fastest" instruction)
+- Caching for repeated phrases
+
+**Not planned**:
+- Offline mode (Gemini is online-only)
+- Custom voice training (not supported by API)
 
 ## Alternative TTS Research (November 2025)
 
