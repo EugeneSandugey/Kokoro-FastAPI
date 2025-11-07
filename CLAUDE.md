@@ -94,6 +94,61 @@ Backend: `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_
 - Voice aliases support
 - Speed control
 
+## Google Gemini TTS Integration (November 2025)
+
+**Command**: `speak-gemini`
+**Location**: `/home/echo/projects/kokoro/speak-gemini.py` (symlinked to `/usr/local/bin/speak-gemini`)
+
+### Why Use Gemini TTS
+- **Multi-language support**: All languages, can switch mid-sentence
+- **Emotional speech**: Native audio with affective dialogue
+- **Quality**: Better than Kokoro for non-English languages
+- **Free tier**: No daily limits (only token/minute limits)
+
+### Why NOT Use Gemini TTS
+- **Privacy**: Free tier data goes to Google for training
+- **Latency**: ~1-2 second overhead for Live API connection
+- **Dependency**: Requires internet connection
+
+### Usage
+```bash
+# Basic usage
+speak-gemini "Hello world"
+
+# With specific voice
+speak-gemini --voice Puck "This uses a different voice"
+
+# Multi-language (automatic switching)
+speak-gemini "Hola! ¿Cómo estás? Switching to English now!"
+
+# Save without playing
+speak-gemini --no-play "Save this" --output /path/to/file.wav
+
+# Available voices
+speak-gemini --help  # Shows all 33 voices
+```
+
+### Available Voices
+Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia (default), Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
+
+### Implementation Details
+- **Model**: gemini-2.5-flash-native-audio-preview-09-2025
+- **API**: Google Gemini Live API (WebSocket)
+- **Config**: Google_gemini_tts/config.py (API key stored here, gitignored)
+- **Audio Format**: 24kHz, 16-bit PCM, mono
+- **System Prompt**: Forces AI to speak EXACT text with NO extra words, at FASTEST speed
+
+### When to Use Each
+- **Kokoro** (default): Private projects, sensitive data, English/Spanish, lowest latency
+- **Gemini** (opt-in): Multi-language, emotional speech, non-sensitive projects
+
+### Integration with Speak Command
+Currently separate commands:
+- `speak` → Kokoro (via Guardian Angel infrastructure)
+- `speak-gemini` → Google Gemini (direct)
+
+Future: Could integrate into single command with `--backend gemini` flag
+
 ## Alternative TTS Research (November 2025)
 
 ### Tested & Rejected
