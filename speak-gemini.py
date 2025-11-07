@@ -26,6 +26,13 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
+# Try to import pyaudio for real-time playback
+try:
+    import pyaudio
+    HAS_PYAUDIO = True
+except ImportError:
+    HAS_PYAUDIO = False
+
 # Configuration
 MODEL = "gemini-2.5-flash-native-audio-preview-09-2025"
 DEFAULT_VOICE = "Laomedeia"
@@ -144,25 +151,26 @@ async def text_to_speech(text: str, voice: str = DEFAULT_VOICE, language: str = 
                 text=""  # Empty - the text is in system instruction
             )
 
-            # Receive and save audio output
+            print(f"🎵 Receiving audio...", file=sys.stderr)
+
+            # Collect all audio data first, then play
+            audio_chunks = []
+            turn = session.receive()
+            async for response in turn:
+                if data := response.data:
+                    audio_chunks.append(data)
+
+            # Combine all chunks
+            complete_audio = b''.join(audio_chunks)
+
+            # Save to WAV file
             wf = wave.open(output_path, "wb")
             wf.setnchannels(1)
             wf.setsampwidth(2)
             wf.setframerate(24000)  # Output is 24kHz
-
-            print(f"🎵 Receiving audio...", file=sys.stderr)
-
-            async for response in session.receive():
-                if response.data is not None:
-                    wf.writeframes(response.data)
-
-                # Check if turn is complete
-                if hasattr(response, 'server_content') and response.server_content:
-                    if hasattr(response.server_content, 'turn_complete'):
-                        if response.server_content.turn_complete:
-                            break
-
+            wf.writeframes(complete_audio)
             wf.close()
+
             print(f"✅ Audio saved to: {output_path}", file=sys.stderr)
 
     except Exception as e:
@@ -179,17 +187,23 @@ def play_audio(audio_path: str):
     Play audio file using the existing speak command infrastructure.
     This integrates with the Guardian Angel media control system.
     """
-    # Use ffplay (part of ffmpeg) to play audio
-    # This is what Kokoro uses internally
+    # Use ffplay with options to prevent popping/crackling
+    # -ar 24000: force sample rate
+    # -ac 1: force mono
+    # -f s16le: force 16-bit little-endian PCM format
     try:
         subprocess.run(
-            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", audio_path],
+            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet",
+             "-ar", "24000", "-ac", "1", audio_path],
             check=True
         )
     except FileNotFoundError:
-        # Fallback: try aplay (Linux)
+        # Fallback: try aplay (Linux) with specific format
         try:
-            subprocess.run(["aplay", "-q", audio_path], check=True)
+            subprocess.run(
+                ["aplay", "-q", "-f", "S16_LE", "-r", "24000", "-c", "1", audio_path],
+                check=True
+            )
         except FileNotFoundError:
             print(f"⚠️  No audio player found. Audio saved to: {audio_path}", file=sys.stderr)
             print(f"Install ffmpeg or aplay to play audio automatically.", file=sys.stderr)
