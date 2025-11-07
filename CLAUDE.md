@@ -96,8 +96,23 @@ Backend: `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_
 
 ## Google Gemini TTS Integration (November 2025)
 
-**Command**: `speak-gemini`
-**Location**: `/home/echo/projects/kokoro/speak-gemini.py` (symlinked to `/usr/local/bin/speak-gemini`)
+**INTEGRATED INTO MAIN SPEAK COMMAND**
+
+Use the `--gemini` (or `-g`) flag to use Google Gemini TTS instead of Kokoro:
+
+```bash
+# Default (Kokoro)
+speak "Hello world"
+
+# With Gemini
+speak --gemini "Hello world"
+
+# Gemini with specific voice
+speak --gemini --voice Puck "Different voice"
+
+# Multi-language (automatic switching)
+speak --gemini "Hola! ¿Cómo estás? Switching to English now!"
+```
 
 ### Why Use Gemini TTS
 - **Multi-language support**: All languages, can switch mid-sentence
@@ -110,44 +125,28 @@ Backend: `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_
 - **Latency**: ~1-2 second overhead for Live API connection
 - **Dependency**: Requires internet connection
 
-### Usage
-```bash
-# Basic usage
-speak-gemini "Hello world"
-
-# With specific voice
-speak-gemini --voice Puck "This uses a different voice"
-
-# Multi-language (automatic switching)
-speak-gemini "Hola! ¿Cómo estás? Switching to English now!"
-
-# Save without playing
-speak-gemini --no-play "Save this" --output /path/to/file.wav
-
-# Available voices
-speak-gemini --help  # Shows all 33 voices
-```
-
-### Available Voices
+### Available Gemini Voices
 Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia (default), Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
 
 ### Implementation Details
 - **Model**: gemini-2.5-flash-native-audio-preview-09-2025
 - **API**: Google Gemini Live API (WebSocket)
 - **Config**: Google_gemini_tts/config.py (API key stored here, gitignored)
-- **Audio Format**: 24kHz, 16-bit PCM, mono
+- **Audio Format**: 24kHz WAV → MP3 conversion
 - **System Prompt**: Forces AI to speak EXACT text with NO extra words, at FASTEST speed
+- **Integration**: Fully integrated with Guardian Angel queue management, media control, beep sound
 
 ### When to Use Each
 - **Kokoro** (default): Private projects, sensitive data, English/Spanish, lowest latency
-- **Gemini** (opt-in): Multi-language, emotional speech, non-sensitive projects
+- **Gemini** (opt-in via `--gemini`): Multi-language, emotional speech, non-sensitive projects
 
-### Integration with Speak Command
-Currently separate commands:
-- `speak` → Kokoro (via Guardian Angel infrastructure)
-- `speak-gemini` → Google Gemini (direct)
-
-Future: Could integrate into single command with `--backend gemini` flag
+### Guardian Angel Integration
+Both Kokoro and Gemini use the same speak command infrastructure:
+- Queue-aware playback (prevents audio overlap)
+- Media control (pauses Chrome/YouTube/Spotify)
+- Agent identification (routes audio to correct user)
+- Beep sound at start
+- All features work identically regardless of TTS backend
 
 ## Alternative TTS Research (November 2025)
 
