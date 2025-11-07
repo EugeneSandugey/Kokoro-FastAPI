@@ -26,6 +26,9 @@ build/
 env/
 venv/
 ENV/
+.env.local
+Google_gemini_tts/.env.local
+Google_gemini_tts/config.py
 
 # IDE
 .idea/

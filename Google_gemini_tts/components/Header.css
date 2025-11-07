@@ -1,0 +1,149 @@
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: transparent;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 999;
+}
+
+.header-left h1 {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.options-button {
+  background: var(--Neutral-20);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--Neutral-80);
+  transition: all 0.2s;
+}
+
+.options-button:hover {
+  background: var(--Neutral-30);
+  color: var(--text);
+  border-color: var(--Neutral-50);
+}
+
+.options-button .icon {
+  font-size: 20px;
+}
+
+.options-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: var(--Neutral-10);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.option-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.option-label {
+  font-size: 14px;
+  color: var(--Neutral-80);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.option-select {
+  background: var(--Neutral-20);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  flex: 1;
+  min-width: 120px;
+}
+
+.option-select:hover:not(:disabled) {
+  border-color: var(--Neutral-50);
+}
+
+.option-select:focus {
+  border-color: var(--Blue-500);
+}
+
+.option-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.option-select option {
+  background: var(--Neutral-20);
+  color: var(--text);
+}
+
+.option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--Neutral-80);
+  cursor: pointer;
+  user-select: none;
+}
+
+.option-checkbox input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.option-button {
+  background: var(--Blue-500);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex: 1;
+}
+
+.option-button:hover {
+  background: var(--Blue-400);
+}
+
+/* Full width button container for Edit System Prompt */
+.option-item:last-child {
+  flex-direction: column;
+}

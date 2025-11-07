@@ -1,0 +1,7 @@
+tunnel: hdtransfers-training
+credentials-file: /home/echo/.cloudflared/42e2e5f9-9b9e-4135-a6e8-127ceb933b01.json
+
+ingress:
+  - hostname: training.eugenes.ai
+    service: http://127.0.0.1:3000
+  - service: http_status:404

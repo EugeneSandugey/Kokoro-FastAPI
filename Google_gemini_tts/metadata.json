@@ -1,0 +1,7 @@
+{
+  "name": "HD Trainer",
+  "description": "Voice call trainer",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
