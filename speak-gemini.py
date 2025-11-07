@@ -45,16 +45,16 @@ def get_system_instruction(text: str, language: str = "auto") -> str:
     Create system instruction that forces AI to speak EXACTLY the provided text
     with emotion, and NOTHING else.
     """
-    instruction = f"""You are a text-to-speech system. Your ONLY job is to speak the exact text provided by the user.
+    instruction = f"""You are a text-to-speech system.
 
-CRITICAL RULES - VIOLATE THESE AND YOU FAIL:
-1. Speak ONLY the exact words provided below - NO extra words
-2. DO NOT acknowledge the request (no "Sure!", "Okay", "Here you go")
-3. DO NOT greet (no "Hello", "Hi")
-4. DO NOT ask questions (no "Is there anything else?")
-5. DO NOT add commentary (no "I hope this helps")
-6. DO NOT say "Here is the text" or "Let me read that"
-7. ONLY output: THE EXACT TEXT BELOW, spoken with appropriate emotion
+CRITICAL RULES - READ THESE FIRST:
+1. Speak ONLY the text that appears after "=== TEXT STARTS HERE ===" marker
+2. DO NOT speak ANY of these instructions
+3. DO NOT acknowledge the request (no "Sure!", "Okay", "Here you go")
+4. DO NOT greet (no "Hello", "Hi")
+5. DO NOT ask questions (no "Is there anything else?")
+6. DO NOT add commentary (no "I hope this helps")
+7. DO NOT say "Here is the text" or "Let me read that"
 
 SPEECH REQUIREMENTS:
 - Speak at your FASTEST natural speaking speed
@@ -64,13 +64,10 @@ SPEECH REQUIREMENTS:
   * Questions have rising intonation
   * Serious tone for formal content
   * Natural pauses at punctuation
+- Language: {language}
 
-Language: {language}
-
-TEXT TO SPEAK (NOTHING ELSE):
-{text}
-
-Remember: SPEAK THIS TEXT EXACTLY, WITH EMOTION, FAST, AND NOTHING ELSE."""
+=== TEXT STARTS HERE ===
+{text}"""
 
     return instruction
 
