@@ -9,6 +9,30 @@ Self-hosted Kokoro TTS (Text-to-Speech) deployment running on RTX 4090 GPU. Prov
 **Performance**: ~0.22 seconds per generation
 **Container**: kokoro-tts
 
+## Whisper Timestamps Service
+GPU-accelerated word-level timestamp generation using distil-large-v3.
+- **Port**: 8881
+- **Container**: whisper-timestamps
+- **VRAM**: ~2GB
+- **Latency**: ~200-250ms (typical TTS audio 1-10s)
+- **Location**: `/home/echo/projects/kokoro/whisper-timestamps-service/`
+
+Used by `speak` command to generate word-level captions for Kokoro and Gemini TTS backends.
+
+```bash
+# Check status
+docker ps | grep whisper-timestamps
+curl http://localhost:8881/health
+
+# Restart
+cd /home/echo/projects/kokoro/whisper-timestamps-service && docker compose restart
+
+# Test
+curl -X POST http://localhost:8881/timestamps \
+  -H "Content-Type: application/json" \
+  -d '{"audio_path": "/audio/test.mp3", "original_text": "Test message"}'
+```
+
 ## Quick Start
 ```bash
 # Check status
@@ -107,15 +131,31 @@ speak "Hello world"
 # Gemini (multi-language, emotional, online)
 speak --gemini "Hello world"
 
-# Gemini with specific voice
-speak --gemini --voice Puck "Different voice"
+# Inworld (HD quality, word timestamps, API-based)
+speak --inworld "Hello world"
+
+# Gemini with voice aliases (f1, f2, f3, m1 only)
+speak --gemini --voice f1 "Female voice 1 - Laomedeia (default)"
+speak --gemini --voice f2 "Female voice 2 - Zephyr"
+speak --gemini --voice f3 "Female voice 3 - Aoede"
+speak --gemini --voice m1 "Male voice 1 - Puck"
+
+# Inworld with voice aliases
+speak --inworld --voice f1 "Sarah (default)"
+speak --inworld --voice f2 "Deborah"
+speak --inworld --voice f3 "Ashley"
+speak --inworld --voice m1 "Dennis"
+speak --inworld --voice m2 "Mark"
+speak --inworld --voice bf1 "Olivia (British)"
+speak --inworld --voice bf2 "Wendy (British)"
 
 # Multi-language (automatic mid-sentence switching)
 speak --gemini "Hola! ¿Cómo estás? Now switching to English seamlessly!"
 
-# Voice selection works for both backends
-speak --voice m1 "Kokoro male voice"
-speak --gemini --voice Laomedeia "Gemini voice"
+# Voice aliases work for all backends (different voices per backend)
+speak --voice f1 "Kokoro female voice (af_heart)"
+speak --gemini --voice f1 "Gemini female voice (Laomedeia)"
+speak --inworld --voice f1 "Inworld female voice (Sarah)"
 ```
 
 ### When to Use Which Backend
@@ -133,6 +173,23 @@ speak --gemini --voice Laomedeia "Gemini voice"
 - Working on non-sensitive projects (free tier data trains Google models)
 - Want higher quality for non-English languages
 
+**Use Inworld (--inworld flag) when:**
+- Want highest quality TTS (ranked #1 on TTS Arena)
+- Need word-level timestamps for lip sync or highlighting
+- Want premium voice quality (Sarah default, HD model)
+- Default speed: 1.2x
+- Cost: ~$5/1M characters (~$3.60/month at typical usage)
+- Note: API-based, data goes to Inworld servers
+
+**Inworld Voice Aliases:**
+- **f1** (default): Sarah
+- **f2**: Deborah
+- **f3**: Ashley
+- **m1**: Dennis
+- **m2**: Mark
+- **bf1**: Olivia (British)
+- **bf2**: Wendy (British)
+
 ### Privacy & Cost
 
 **Free Tier:**
@@ -145,13 +202,29 @@ speak --gemini --voice Laomedeia "Gemini voice"
 - $0.50 text input, $12 audio output per 1M tokens
 - ~$1.20/month for typical usage (1000 calls @ 100 tokens avg)
 
-### Available Gemini Voices (33 total)
+### Available Gemini Voices (LIMITED SET - 4 voices only)
 
-**Default**: Laomedeia
+**Why limited**: Simplified to 4 curated voices (99% usage on f1 default). API supports 33 total voices but only these 4 are exposed via aliases.
 
-**All voices**: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
+**Voice Aliases:**
+- **f1** (female1): **Laomedeia** - Default, most-used voice
+- **f2** (female2): **Zephyr** - Alternative female voice
+- **f3** (female3): **Aoede** - Alternative female voice
+- **m1** (male1): **Puck** - Male voice
 
-**Note**: Not all Kokoro voice aliases work with Gemini. Use actual Gemini voice names from list above.
+**Using direct voice names** (bypasses aliases):
+```bash
+# Use any of the 33 Gemini API voices by name (not aliases)
+speak --gemini --voice Fenrir "Direct voice name"
+speak --gemini --voice Kore "Another direct voice"
+```
+
+**All 33 Gemini API voices**: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat
+
+**Note**: Voice aliases map to DIFFERENT voices depending on backend:
+- Kokoro: f1 = af_heart, m1 = am_fenrir
+- Gemini: f1 = Laomedeia, m1 = Puck
+- Inworld: f1 = Sarah, f2 = Deborah, f3 = Ashley, m1 = Dennis, m2 = Mark, bf1 = Olivia, bf2 = Wendy
 
 ### Implementation Architecture
 
@@ -254,18 +327,26 @@ CRITICAL RULES - READ THESE FIRST:
 
 ### Configuration Files
 
-**API Key Storage**: `/home/echo/projects/kokoro/Google_gemini_tts/config.py`
+**Gemini API Key Storage**: `/home/echo/projects/kokoro/Google_gemini_tts/config.py`
 ```python
 GEMINI_API_KEY = "AIza..." # Gitignored
 MODEL = "models/gemini-2.5-flash-native-audio-preview-09-2025"
 VOICE_NAME = "Laomedeia"
 ```
 
+**Inworld API Key Storage**: `/home/echo/projects/kokoro/inworld_tts/config.py`
+```python
+INWORLD_API_KEY = "YlhS..." # Base64 encoded, Gitignored
+DEFAULT_VOICE = "Sarah"
+DEFAULT_MODEL = "inworld-tts-1-max"  # HD model
+```
+
 **Gitignore**: `.gitignore` excludes:
 - `Google_gemini_tts/.env.local`
 - `Google_gemini_tts/config.py`
+- `inworld_tts/config.py`
 
-**Important**: API key is read from config.py at runtime. If missing, falls back to `GEMINI_API_KEY` environment variable.
+**Important**: API keys are read from config.py at runtime. Falls back to environment variables if missing.
 
 ### Troubleshooting
 
@@ -400,6 +481,10 @@ Location: `~/projects/kokoro/`
 **Related Repo**: guardian-angel-voice-interface (contains speak proxy code)
 
 ## Recent Updates
+- **2025-11-29**: Fixed Inworld word timestamp alignment with fuzzy mapping - handles hyphen splits (word-level → word+level), compound splits (timestamps → time+stamps), and truncation (transcription → transcript)
+- **2025-11-28**: Added Inworld TTS integration (--inworld flag) with 7 voices (Sarah default), HD model, word timestamps, 1.2x default speed
+- **2025-11-07**: Limited Gemini voices to 4 curated aliases (f1, f2, f3, m1) - 99% usage on f1 default
+- **2025-11-07**: Voice aliases now model-aware (f1 = af_heart for Kokoro, Laomedeia for Gemini, Sarah for Inworld)
 - **2025-11-04**: Added voice aliases (f1-f4, m1-m4, s1-s3)
 - **2025-11-04**: Fixed Docker speak proxy to support voice/speed parameters
 - **2025-08-31**: Updated to v0.2.4, fixed exclamation mark escaping bug
@@ -407,11 +492,13 @@ Location: `~/projects/kokoro/`
 
 ## Cost Analysis vs Cloud TTS
 **Self-hosted Kokoro**: $0/hour (only ~$0.15/hr electricity for 4090)
+**Inworld TTS API**: ~$0.35/hour ($5/1M chars, ~$3.60/month typical usage)
 **MiniMax API**: $1.38-4.59/hour depending on model
-**Savings**: $41-138/month for 1 hour daily use
+**Savings**: $41-138/month for 1 hour daily use vs MiniMax
 
 ## Key Files
 - `/usr/local/bin/speak` - Main speak command wrapper
 - `/home/echo/bin/docker-speak-proxy.py` - Proxy for Docker agents
 - `/home/echo/projects/guardian-angel-voice-interface/wsl_guardian_angel_speak_queue_aware.py` - Backend speak implementation
+- `/home/echo/projects/kokoro/inworld_tts/config.py` - Inworld API key (gitignored)
 - Container voices: `/app/api/src/voices/v1_0/*.pt` (66 voice files)

@@ -1,0 +1,18 @@
+name: whisper-timestamps
+services:
+  whisper-timestamps:
+    build: .
+    container_name: whisper-timestamps
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8881:8881"
+    volumes:
+      # Mount TTS audio directory so container can access audio files
+      - /home/echo/projects/guardian-angel-voice-interface/tts-audio-volume:/audio:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
