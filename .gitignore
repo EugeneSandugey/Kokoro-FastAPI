@@ -76,5 +76,16 @@ uv.lock
 
 # Mac MPS virtualenv for dual testing
 .venv-mps
+
+# HuggingFace and model caches (large files)
+**/cache/
+**/huggingface/
+*.safetensors
+*.bin
+!requirements*.txt
+
+# Project-specific caches
 chatterbox/cache/
+
+# Config files with secrets
 inworld_tts/config.py
