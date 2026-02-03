@@ -2,6 +2,8 @@ name: kokoro-tts-gpu
 services:
   kokoro-tts:
     image: ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.4-master
+    container_name: kokoro-tts
+    restart: on-failure:3
     # build:
     #   context: ../..
     #   dockerfile: docker/gpu/Dockerfile
@@ -9,7 +11,7 @@ services:
     #   - ../../api:/app/api
     # user: "1001:1001"  # Ensure container runs as UID 1001 (appuser)
     ports:
-      - "8880:8880"
+      - "127.0.0.1:8880:8880"
     environment:
       - PYTHONPATH=/app:/app/api
       - USE_GPU=true

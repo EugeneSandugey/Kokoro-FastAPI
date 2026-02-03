@@ -89,3 +89,13 @@ chatterbox/cache/
 
 # Config files with secrets
 inworld_tts/config.py
+
+# Audio/data files (large)
+benchmark/output/
+sttdata/dev_clean/
+sttdata/gemini_test/*.wav
+sttdata/libri_test/*.wav
+sttdata/reports/
+*.wav
+*.mp3
+*.flac
