@@ -390,12 +390,37 @@ Only consider Parakeet-only mode after full dual-engine validation is 100% confi
 **Per-judge timing** (chunk_0005, 21.5s audio):
 - Parakeet: 200ms | Qwen: 2500ms | UTMOSv2: 2298ms | SCOREQ: 932ms | DNSMOS: 913ms | NISQA: 288ms | Signal: 18ms
 
-**Parallelization plan** (STT agent, approved):
-- Phase 1: Concurrent judges via ThreadPoolExecutor → 4.5s→2.2s (2x speedup) — IN PROGRESS
+**Parallelization plan** (STT agent):
+- Phase 1: Concurrent judges — FAILED (WavLM CPU contention), reverted to sequential (commit ee79353)
 - Phase 4: Selective Qwen (Parakeet-only bulk, Qwen on flagged ~5%) → STT 2.7s→200ms
-- Phase 2: File-level parallelism for batch/folder endpoints
+- Phase 2: File-level parallelism with dedicated worker processes
 - Phase 3: UTMOSv2 tensor batching (hardest, 3-4x potential)
-- Cascade option: MOS on sample only (10-20%) for bulk → 50K files in ~3hrs vs 30+hrs
+- **MOS sampling** (highest priority optimization): mos_mode=all|sample|flagged_only|none
+- SCOREQ vs NISQA: NOT redundant (Pearson=+0.16), keep both judges
+
+**Database integration** (Supabase PostgreSQL, commit b3a9214):
+- Table: audio_quality (~74 columns), one row per audio file
+- Upsert on (file_hash, dataset) — idempotent re-runs
+- /api/scan/parakeet: fast Parakeet-only scan → writes parakeet_* columns
+- /api/scan/qwen: precision validation (~7x RT) → writes qwen_* columns (commit d1f01e5)
+- /api/scan/mos: quality scoring (~4-5x RT) → writes all judge columns (commit d1f01e5)
+- **mos_mode parameter**: all | sample | flagged_only | none (commit d1f01e5)
+  - sample mode: mos_sample_rate=0.1 (10%) default, only scores random subset
+  - flagged_only: only scores files with tts_failures>0 or ambiguous>0 in DB
+- Full Alice scan: 378 files, 136 min audio, scanned in 77s (106x RT), 378 DB rows written
+- Worst WER file (31.3%) had 0 tts_failures — all GT text errors from text splitter
+- Schema flexible: ALTER TABLE ADD COLUMN is instant, metadata JSONB for ad-hoc data
+
+**Threshold analysis** (Alice dataset, 378 Kokoro-generated files):
+- 36.5% have zero WER (perfect), median WER 1.6%, mean confidence 98.64
+- Suggested thresholds:
+  - Strict (50%): WER < 2% AND Conf > 98%
+  - Balanced (78%): WER < 5% AND Conf > 97%
+  - Permissive (95%): WER < 10% AND Conf > 95%
+- Qwen escalation threshold: WER > 5% OR Conf < 98% (~20-25% of files)
+- Bottom 10% (WER 8-31%) are GT text errors, not TTS failures
+
+**Next session**: Compare ~100 files each from LibriTTS-R (human), Gemini Kore (female), Gemini Puck (male) against Kokoro baseline. Dashboard work.
 
 **Test data generated**:
 - Alice in Wonderland full book: 378 chunks × ~22s = 2.26 hrs, generated in 2.1 min (63.6x realtime)
