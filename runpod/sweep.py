@@ -23,6 +23,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import requests
 import yaml
 
 try:
@@ -30,6 +31,8 @@ try:
 except ImportError:
     print("ERROR: runpod package not installed. Run: pip install runpod")
     sys.exit(1)
+
+REST_API_BASE = "https://rest.runpod.io/v1"
 
 
 # ---- Configuration ----
@@ -114,25 +117,66 @@ class SweepConfig:
 # ---- Pod Management ----
 
 def create_pod(run_params: dict, runpod_config: dict) -> dict:
-    """Create a single RunPod pod for one sweep configuration."""
-    # All params become env vars (uppercase keys, string values)
+    """Create a single RunPod pod for one sweep configuration.
+
+    Uses REST API when interruptible (spot) is requested, since the Python SDK
+    doesn't support the interruptible parameter. Falls back to SDK otherwise.
+    """
     env = {k.upper(): str(v) for k, v in run_params.items()}
+    name = f"f5-{run_params['RUN_NAME'][:45]}"
+    interruptible = runpod_config.get("interruptible", False)
 
-    pod = runpod.create_pod(
-        name=f"f5-{run_params['RUN_NAME'][:45]}",
-        image_name=runpod_config["image"],
-        gpu_type_id=runpod_config["gpu_type"],
-        cloud_type=runpod_config.get("cloud_type", "ALL"),
-        gpu_count=1,
-        container_disk_in_gb=runpod_config.get("container_disk_gb", 20),
-        network_volume_id=runpod_config["network_volume_id"],
-        volume_mount_path="/workspace",
-        env=env,
-        data_center_id=runpod_config.get("data_center_id"),
-        min_memory_in_gb=runpod_config.get("min_memory_gb", 24),
-    )
+    if interruptible:
+        # REST API supports interruptible/spot instances
+        payload = {
+            "name": name,
+            "imageName": runpod_config["image"],
+            "gpuTypeIds": [runpod_config["gpu_type"]],
+            "gpuTypePriority": "availability",
+            "cloudType": runpod_config.get("cloud_type", "SECURE"),
+            "interruptible": True,
+            "gpuCount": 1,
+            "containerDiskInGb": runpod_config.get("container_disk_gb", 20),
+            "volumeInGb": 0,
+            "networkVolumeId": runpod_config["network_volume_id"],
+            "volumeMountPath": "/workspace",
+            "env": env,
+            "ports": ["22/tcp"],
+            "minRAMPerGPU": runpod_config.get("min_memory_gb", 24),
+            "supportPublicIp": True,
+        }
+        if runpod_config.get("data_center_id"):
+            payload["dataCenterIds"] = [runpod_config["data_center_id"]]
+        if runpod_config.get("allowed_cuda_versions"):
+            payload["allowedCudaVersions"] = runpod_config["allowed_cuda_versions"]
 
-    return pod
+        resp = requests.post(
+            f"{REST_API_BASE}/pods",
+            headers={
+                "Authorization": f"Bearer {runpod.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(f"REST API error {resp.status_code}: {resp.text}")
+        return resp.json()
+    else:
+        # Use SDK for non-spot pods
+        pod = runpod.create_pod(
+            name=name,
+            image_name=runpod_config["image"],
+            gpu_type_id=runpod_config["gpu_type"],
+            cloud_type=runpod_config.get("cloud_type", "SECURE"),
+            gpu_count=1,
+            container_disk_in_gb=runpod_config.get("container_disk_gb", 20),
+            network_volume_id=runpod_config["network_volume_id"],
+            volume_mount_path="/workspace",
+            env=env,
+            data_center_id=runpod_config.get("data_center_id"),
+            min_memory_in_gb=runpod_config.get("min_memory_gb", 24),
+        )
+        return pod
 
 
 def get_all_pods() -> list[dict]:
