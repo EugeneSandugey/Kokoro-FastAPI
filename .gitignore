@@ -99,3 +99,4 @@ sttdata/reports/
 *.wav
 *.mp3
 *.flac
+.s3_credentials

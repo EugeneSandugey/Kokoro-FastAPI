@@ -7,16 +7,16 @@
 # RunPod infrastructure settings
 runpod:
   image: "echoai/f5tts-train:v1"          # Docker Hub image (build and push first)
-  gpu_type: "NVIDIA RTX A5000"             # 24GB VRAM, best price/VRAM in Secure Cloud
+  gpu_type: "NVIDIA GeForce RTX 3090"      # 24GB VRAM, testing GPU
   cloud_type: "SECURE"                     # Required for network volumes
-  interruptible: true                      # Spot pricing ($0.14/hr vs $0.27/hr on-demand)
+  interruptible: true                      # Spot pricing ($0.22/hr vs $0.46/hr on-demand)
   network_volume_id: "REPLACE_ME"          # From RunPod console after creating volume
   data_center_id: null                     # null = any DC with the volume
   container_disk_gb: 20                    # Container-local scratch disk
   min_memory_gb: 24                        # Minimum system RAM
 
   # Cost estimation (for preview only, not enforced)
-  cost_per_hour: 0.14                      # RTX A5000 secure spot rate
+  cost_per_hour: 0.22                      # RTX 3090 secure spot rate
   estimated_hours_per_run: 0.4             # ~24 min per 8-epoch run
 
 # Parameters to sweep (grid search: all combinations)

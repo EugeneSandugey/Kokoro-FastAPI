@@ -3,8 +3,25 @@
 ## Account
 - **User ID**: `user_35mTUmq8sFVkcucqbnG6SZKZQNY`
 - **API Key**: Stored in `runpod/.runpod_key` (gitignored)
+- **S3 API Key**: Stored in `runpod/.s3_credentials` (gitignored)
+  - Access Key: `user_35mTUmq8sFVkcucqbnG6SZKZQNY`
+  - Secret: in `.s3_credentials` file
 - **Spend Limit**: $80/hr default (contact support to increase)
 - **Billing**: Per-second for compute, per-hour for storage
+
+## Pricing Model Explained
+
+| Tier | What It Means | Use Case |
+|------|--------------|----------|
+| **Community On-Demand** | Cheapest. Individual GPU owners. Runs until you stop. | Quick tests, no network volume |
+| **Community Spot** | Even cheaper community. Can be preempted (5s warning). | Throwaway jobs |
+| **Secure On-Demand** | RunPod's own data centers. Reliable, network volume support. | Production training |
+| **Secure Spot** | Discounted secure. Can be preempted (5s warning). | **Our sweet spot** — cheap + network volumes |
+
+**Why we use Secure Spot**: Network volumes (shared data across pods) ONLY work with Secure Cloud.
+Spot pricing gives ~50% discount, and for training with frequent checkpoints, preemption is fine.
+
+Price order: Community Spot < Community < Secure Spot < Secure On-Demand
 
 ## GPU Pricing (Feb 2026)
 
@@ -103,6 +120,8 @@ Some GPUs are NOT available in Secure Cloud: RTX 4000 Ada SFF, RTX 4080, RTX 408
 - Deploy new pod with same network volume to regain access
 
 ### S3-Compatible API (Upload Data Without Running a Pod)
+**NOT Amazon AWS.** This is RunPod's own storage API that happens to use the same protocol as Amazon S3.
+Zero extra cost — included with your network volume. Uses `aws` CLI commands but talks to RunPod servers.
 Allows uploading/downloading files to network volumes without paying for GPU time.
 
 **Supported Datacenters for S3 API:**
