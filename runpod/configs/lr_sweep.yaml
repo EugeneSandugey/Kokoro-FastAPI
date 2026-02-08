@@ -1,0 +1,36 @@
+# LR Sweep - Repeat of local experiment on RunPod
+# Tests 4 learning rates, same dataset/settings as local runs
+#
+# Local results for reference:
+#   5e-6: loss ~0.4, 3400 updates
+#   1e-5: loss ~0.4, 3400 updates
+#   5e-5: loss ~0.37, 3400 updates
+#
+# This sweep adds 1e-4 and tests in parallel
+
+runpod:
+  image: "echoai/f5tts-train:v1"
+  gpu_type: "NVIDIA GeForce RTX 3090"
+  cloud_type: "COMMUNITY"
+  network_volume_id: "REPLACE_ME"
+  container_disk_gb: 20
+  min_memory_gb: 24
+  cost_per_hour: 0.22
+  estimated_hours_per_run: 0.4
+
+sweep:
+  LEARNING_RATE: [5e-6, 1e-5, 5e-5, 1e-4]
+
+fixed:
+  EPOCHS: 8
+  BATCH_SIZE: 5000
+  WARMUP_UPDATES: 50
+  SAVE_PER_UPDATES: 500
+  KEEP_LAST_N: 3
+  LAST_PER_UPDATES: 200
+  MAX_SAMPLES: 32
+  GRAD_ACCUM: 1
+  MAX_GRAD_NORM: 1.0
+  CHECKPOINT_ACTIVATIONS: "False"
+  DATASET_NAME: kokoro_libri
+  CONFIG_NAME: F5TTS_RunPod_Base

@@ -1,0 +1,8 @@
+# RunPod secrets
+.runpod_key
+
+# Sweep manifests (contain pod IDs)
+sweep_*.json
+
+# Temporary files
+*.tmp
